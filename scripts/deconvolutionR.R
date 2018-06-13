@@ -8,14 +8,16 @@ deconvolution <- function(observ, noise, grid.len=100, from, to, user.scalar=1){
     # - observ: vector of noisy observations
   # - grid.len: number of points for which the distribution will be calculated
   # - from, to: from/to which value the deconvoluted distribution will be calculated
-  # -user. scalar: sometimes a scaling of values can be needed. By default, there is no scaling 
+  # -user. scalar: sometimes a scaling of values can be needed. 
+  # By default, there is no scaling 
   
   if(user.scalar == 0){
-    scalar <- mean(observ)/log(30)  
+    scalar <- mean(observ)/15  
   } else {
     scalar <- user.scalar
   }
-  est <- deamerSE(y=(observ/scalar), errors = (noise/scalar), grid.length=grid.len, from=from/scalar, to=to/scalar)
+  est <- deamerSE(y=(observ/scalar), errors = (noise/scalar), 
+                  grid.length=grid.len, from=from/scalar, to=to/scalar)
   deconvoluted <- cbind(melt(as.data.frame(est$f/scalar))[2], 
                         as.data.frame(est$supp*scalar))
   colnames(deconvoluted)<- c('density', 'model_fluo')
@@ -74,7 +76,8 @@ decon.to.values.par <- function(noise, observ, x_s, no_cores){
 }
 
 decon.treatment <- function( data.decon, col.name, treatment, exper.noise,
-                              grid.len = 100, from = 0, to=10, no_cores = 20) {
+                              grid.len = 100, from = 0, to=10, no_cores = 20,
+                             user.scalar=1, new.column=0) {
   #function to deconvolute values for each separate group ov values from df
   # ('treatments')
   ## args:
@@ -83,8 +86,10 @@ decon.treatment <- function( data.decon, col.name, treatment, exper.noise,
   # - treatment; column which indicates to which group an observation belongs to
   # - exper.noise; a vector of values of pure errors
   # - grid.len, from, to, no_cores; all args come from 'deconvolution' function
-  
-  new.col.name <- paste("decon.", col.name, sep='')
+  if(new.column!=0){
+    new.col.name <- paste(col.name, new.column, "decon", sep='.')  
+  } else {
+  new.col.name <- paste(col.name, ".decon", sep='') }
   data.decon[[new.col.name]] <- -100
   unique.treatment <- unique(data.decon[[treatment]])
 
@@ -93,7 +98,7 @@ decon.treatment <- function( data.decon, col.name, treatment, exper.noise,
     exper.observ <- data.decon[data.decon[[treatment]]==i, ][[col.name]]
     deconvoluted <- deconvolution(observ=exper.observ, noise=exper.noise, 
                                   grid.len = grid.len, 
-                                  from = from, to=to)
+                                  from = from, to=to, user.scalar = user.scalar)
     deconvoluted.values <- decon.to.values.par(noise=exper.noise,
                                                observ = exper.observ, 
                                                x_s=deconvoluted, no_cores = no_cores)
